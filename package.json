@@ -1,0 +1,19 @@
+{
+  "name": "vite-plugin-dev-tool",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@vue/compiler-core": "^3.2.47",
+    "@vue/compiler-dom": "^3.2.47"
+  },
+  "dependencies": {
+    "magic-string": "^0.27.0"
+  }
+}
