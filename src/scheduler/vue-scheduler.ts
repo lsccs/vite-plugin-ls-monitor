@@ -1,5 +1,5 @@
-import { TransformParams, AstProps, NodeTypes, EventPointData } from '../type';
-import { transform, parse } from '@vue/compiler-dom';
+import { AstProps, NodeTypes, EventPointData, TransformSchedulerParams } from '../type';
+import { transform } from '@vue/compiler-dom';
 import type {
   AttributeNode,
   DirectiveNode,
@@ -7,38 +7,34 @@ import type {
   SimpleExpressionNode,
 } from '@vue/compiler-core';
 
-import MagicString from 'magic-string';
+import { POINT_PROP, LISTENING_EVENT, SPLIT_IDENT, replaceReg } from '../setting';
 
 /**
  * vue 文件
  * @param params
  */
-export function vueScheduler(params: TransformParams) {
-  const ast = parse(params.code);
-  const result = new MagicString(params.code);
-  transform(ast, {
+export function vueScheduler(params: TransformSchedulerParams) {
+  transform(params.ast, {
     nodeTransforms: [
-      (node: ElementNode) => {
+      (node) => {
+        node = node as ElementNode;
         const type = node.type as unknown as NodeTypes;
         if (type === NodeTypes.ELEMENT) {
-          const currentAttrNode = (node.props as AstProps).find((item) => item.name === 'data-lishi');
-          currentAttrNode && iterationNodeProps(node.props, currentAttrNode, result);
+          const currentAttrNode = (node.props as AstProps).find((item) => item.name === POINT_PROP);
+          currentAttrNode && iterationNodeProps(node.props, currentAttrNode, params);
         }
       },
     ],
   });
-  console.log(result.toString());
-  params.transform({ code: result.toString(), map: null });
 }
 
 /**
  * 遍历 props，并修改或绑定事件
- * @param props
  */
 function iterationNodeProps(
   props: AstProps,
   currentAttrNode: AttributeNode | DirectiveNode,
-  result: MagicString,
+  params: TransformSchedulerParams,
 ) {
   props.forEach((item) => {
     const type = item.type as unknown as NodeTypes;
@@ -50,14 +46,12 @@ function iterationNodeProps(
       const nodeArg = nodeDir.arg as SimpleExpressionNode;
       // 事件名称是否一致 && 排除当前比较的 node
       if (name === nodeArg.content) {
-        const { loc, content } = (nodeDir.exp || {}) as SimpleExpressionNode;
-        console.log(nodeDir, content);
-        // 移除并替换事件
-        result.remove(loc.start.offset, loc.end.offset);
-        result.appendRight(
-          loc.start.offset,
-          `(...arg) => { window.lishi(${data});${content}(...arg); }`,
-        );
+        const { content } = (nodeDir.exp || {}) as SimpleExpressionNode;
+        const eventParams = `{ data: '${data}', event: '${name}', ctx: this }`;
+        // 修改替换目标事件方法
+        params.result = params.result.replace(replaceReg(content), (str) => {
+          return str + `window.${LISTENING_EVENT}(${eventParams})`;
+        });
       }
     }
   });
@@ -69,6 +63,6 @@ function iterationNodeProps(
  */
 function getEventPointData(content: string | undefined): EventPointData {
   if (!content) return {} as EventPointData;
-  const [name, data] = content.split(':');
+  const [name, data] = content.split(SPLIT_IDENT);
   return { name, data };
 }

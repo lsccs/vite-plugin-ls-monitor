@@ -1,5 +1,6 @@
 import { TransformResult } from 'vite';
-import { AttributeNode, DirectiveNode } from '@vue/compiler-core';
+import { AttributeNode, DirectiveNode, RootNode } from '@vue/compiler-core';
+import MagicString from 'magic-string';
 
 export type SchedulerCallback = (result: TransformResult) => void;
 
@@ -9,10 +10,21 @@ export interface TransformParams {
   transform: SchedulerCallback;
 }
 
+export interface TransformSchedulerParams extends TransformParams {
+  ast: RootNode;
+  result: MagicString;
+}
+
 export type AstProps = Array<AttributeNode | DirectiveNode>;
 export interface EventPointData {
   name: string | undefined;
   data: string | undefined;
+}
+
+export interface pointParams {
+  event: string;
+  data: string;
+  ctx: any;
 }
 
 export enum NodeTypes {

@@ -2,18 +2,23 @@
   "name": "vite-plugin-dev-tool",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "index.ts",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsup",
+    "publish": "npm run build && npm publish"
   },
+  "files": [
+    "dist"
+  ],
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "@vue/compiler-core": "^3.2.47",
-    "@vue/compiler-dom": "^3.2.47"
-  },
-  "dependencies": {
-    "magic-string": "^0.27.0"
+    "@vue/compiler-dom": "^3.2.47",
+    "magic-string": "^0.29.0",
+    "tsup": "^6.6.2",
+    "vite": "^4.1.1"
   }
 }
