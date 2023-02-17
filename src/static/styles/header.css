@@ -1,0 +1,22 @@
+#ls-monitor .ls-monitor-tab {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ls-monitor-tab > .ls-monitor-tab-item {
+  padding: 8px 15px;
+
+  cursor: pointer;
+  transition-duration: .3s;
+  transition-property: border-color;
+  transition-property: background-color;
+  background: transparent;
+  border-bottom: 2px solid transparent;
+}
+.ls-monitor-tab > .ls-monitor-tab-item.active {
+  border-color: var(--primary);
+}
+.ls-monitor-tab > .ls-monitor-tab-item:hover {
+  border-radius: 4px;
+  background: var(--primary);
+  color: #fff;
+}

@@ -9,3 +9,20 @@ export const SPLIT_IDENT = ':';
 
 // 替换目标方法名称正则
 export const replaceReg = (content: string) => new RegExp(`${content}\\((.*?)\\{`);
+
+// -----------------------------------------
+// 静态资源
+export const VITE_STATIC_RESOURCE = 'vite-static';
+// 静态资源标识
+export const VITE_STATIC_RESOURCE_PATH = `:${VITE_STATIC_RESOURCE}`;
+// 本地插件存放静态资源路径
+export const VITE_STATIC_PATH = './src/static';
+// 目标资源存放路径
+export const VITE_TARGET_STATIC_PATH = `./${VITE_STATIC_RESOURCE}`;
+
+// -----------------------------------------
+// 数据库名称
+export const DATABASE_NAME = 'monitor-database';
+
+// 存储对象名称
+export const STORE_POINT_NAME = 'monitor-list';

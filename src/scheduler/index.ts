@@ -1,6 +1,6 @@
 import { vueScheduler } from './vue-scheduler';
 import { jsScheduler } from './js-scheduler';
-import { TransformParams, TransformSchedulerParams } from '../type';
+import { TransformParams, TransformSchedulerParams } from '../types';
 import { parse } from '@vue/compiler-dom';
 import MagicString from 'magic-string';
 

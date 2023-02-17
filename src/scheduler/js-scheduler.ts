@@ -1,4 +1,4 @@
-import { TransformParams } from '../type';
+import { TransformParams } from '../types';
 
 /**
  * js 文件

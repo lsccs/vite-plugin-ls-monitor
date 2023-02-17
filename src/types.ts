@@ -22,7 +22,9 @@ export interface EventPointData {
 }
 
 export interface pointParams {
+  id: number;
   event: string;
+  methodName: string;
   data: string;
   ctx: any;
 }
@@ -42,4 +44,13 @@ export enum NodeTypes {
   FOR = 11,
   TEXT_CALL = 12,
   VNODE_CALL = 13,
+}
+
+export interface DatabaseData {
+  event: string;
+  data: string;
+  methodName: string;
+  componentPath: string;
+  count: number;
+  createTime: string;
 }

@@ -1,4 +1,4 @@
-import { AstProps, NodeTypes, EventPointData, TransformSchedulerParams } from '../type';
+import { AstProps, NodeTypes, EventPointData, TransformSchedulerParams } from '../types';
 import { transform } from '@vue/compiler-dom';
 import type {
   AttributeNode,
@@ -8,6 +8,7 @@ import type {
 } from '@vue/compiler-core';
 
 import { POINT_PROP, LISTENING_EVENT, SPLIT_IDENT, replaceReg } from '../setting';
+import { getID } from '../utils';
 
 /**
  * vue 文件
@@ -47,7 +48,13 @@ function iterationNodeProps(
       // 事件名称是否一致 && 排除当前比较的 node
       if (name === nodeArg.content) {
         const { content } = (nodeDir.exp || {}) as SimpleExpressionNode;
-        const eventParams = `{ data: '${data}', event: '${name}', ctx: this }`;
+        const eventParams = `{
+          id: ${getID()},
+          data: '${data}',
+          event: '${name}',
+          ctx: this,
+          methodName: '${content}'
+        }`;
         // 修改替换目标事件方法
         params.result = params.result.replace(replaceReg(content), (str) => {
           return str + `window.${LISTENING_EVENT}(${eventParams})`;

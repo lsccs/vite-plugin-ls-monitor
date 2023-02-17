@@ -1,0 +1,14 @@
+.ls-monitor-body {
+  padding: 10px;
+}
+
+
+.ls-monitor-body .ls-monitor-point-list .ls-monitor-point-item {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border-color);
+  transition: .3s;
+  cursor: pointer;
+}
+.ls-monitor-body .ls-monitor-point-list .ls-monitor-point-item:hover {
+  background: var(--sub-color);
+}

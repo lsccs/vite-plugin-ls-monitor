@@ -1,27 +1,25 @@
 import { Plugin, TransformResult } from 'vite';
 import { scheduler } from './scheduler';
-import { readFileSync } from 'fs';
-import { resolve } from './utils';
+import { readFileSync, ensureFile, writeFile } from 'fs-extra';
+import { readDirAndFile, resolve } from './utils';
+import requestMiddleware from './middlewares/requestMiddleware';
+import { VITE_STATIC_PATH, VITE_STATIC_RESOURCE_PATH, VITE_TARGET_STATIC_PATH } from './setting';
+import { script } from './api';
 
 export function CreateDevToolPlugin(): Plugin {
-  const file = readFileSync(resolve('src/script/index.js'));
-
   return {
     name: 'vite-plugin-dev-tool',
     enforce: 'pre',
 
+    configureServer(server) {
+      initStaticResources();
+      server.middlewares.use(requestMiddleware);
+    },
+
     transformIndexHtml(html) {
       return {
         html,
-        tags: [
-          {
-            tag: 'script',
-            attrs: {
-              type: 'module',
-            },
-            children: file.toString(),
-          },
-        ],
+        tags: initScript(),
       };
     },
     transform(code: string, id: string): Promise<TransformResult> | TransformResult {
@@ -36,4 +34,32 @@ export function CreateDevToolPlugin(): Plugin {
       });
     },
   } as Plugin;
+}
+
+// 初始化静态资源
+function initStaticResources() {
+  readDirAndFile(resolve(VITE_STATIC_PATH), async (path: string, fullPath: string) => {
+    try {
+      const [, dir] = fullPath.split('static');
+      const file = await readFileSync(fullPath);
+      const targetPath = VITE_TARGET_STATIC_PATH + dir;
+      await ensureFile(targetPath);
+      writeFile(targetPath, file.toString());
+    } catch (e) {
+      console.error('vite-plugin: static resource load error!');
+    }
+  });
+}
+
+// 创建初始化执行脚本
+function initScript() {
+  return [
+    {
+      tag: 'script',
+      attrs: {
+        type: 'module',
+        src: script,
+      },
+    },
+  ];
 }
