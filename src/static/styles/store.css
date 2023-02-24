@@ -1,0 +1,30 @@
+.ls-monitor-store-log {
+  font-family: 'Source Code Pro', 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+}
+
+.ls-monitor-store-log .ls-store-obj-key {
+  color: #111;
+  font-size: 13px;
+}
+
+.ls-monitor-store-log .ls-store-obj-attr {
+  color: #337ab7;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ls-monitor-store-log .ls-store-obj-map {
+  font-size: 0.8em;
+  user-select: none;
+  color: hsl(0, 0%, 30%);
+}
+
+.ls-monitor-store-log .ls-store-obj-container {
+  display: inline-block;
+  cursor: pointer;
+  line-height: 1.7;
+}
+
+.ls-monitor-store-log .ls-store-indent-content {
+  margin-left: 2em;
+}

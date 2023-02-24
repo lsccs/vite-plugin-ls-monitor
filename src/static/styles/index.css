@@ -1,12 +1,13 @@
 @import "./var.css";
 @import "./header.css";
 @import "./body.css";
+@import "./store.css";
 
 
 #ls-monitor {
   height: 100%;
   width: 100%;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--color);
 }
 
@@ -17,4 +18,16 @@
 #ls-monitor .flex {
   display: flex;
   align-items: center;
+}
+
+#ls-monitor .show {
+  display: block;
+}
+
+#ls-monitor .hide {
+  display: none;
+}
+
+#ls-monitor .pointer {
+  cursor: pointer;
 }

@@ -1,1 +1,3 @@
-export { CreateDevToolPlugin } from './src/index';
+export { createLsMonitorPlugin } from './src/index';
+
+export * from './types';

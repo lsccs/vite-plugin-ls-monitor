@@ -8,20 +8,13 @@ window[LISTENING_EVENT] = async (data: pointParams) => {
   const db = await getDB();
 
   // 读取数据库中有没有重复的
-  const currentData: IDBRequest<DatabaseData | undefined> | undefined = db?.get(data.id);
+  const currentData: DatabaseData | undefined = await db?.getItem(data.id);
   const result: DatabaseData = createDatabaseData(data);
 
-  if (!currentData) {
-    return db?.put(result, data.id);
+  if (currentData) {
+    result.count += currentData.count;
   }
-
-  // 重复则增加 count
-  currentData.onsuccess = () => {
-    if (currentData.result) {
-      result.count += currentData.result.count;
-    }
-    db?.put(result, data.id);
-  };
+  db?.put(result, data.id);
 };
 
 function createDatabaseData(data: pointParams): DatabaseData {

@@ -12,3 +12,9 @@
 .ls-monitor-body .ls-monitor-point-list .ls-monitor-point-item:hover {
   background: var(--sub-color);
 }
+
+
+.ls-title {
+  font-size: 17px;
+  color: #000;
+}

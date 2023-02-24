@@ -49,3 +49,55 @@ export function readDirAndFile(path: string, cb: Function, dir?: string) {
     }
   });
 }
+
+// 是否为对象
+export function isObject(value: any) {
+  return Object.prototype.toString.call(value) === '[object Object]';
+}
+// 是否为数组
+export function isArray(value: any) {
+  return Object.prototype.toString.call(value) === '[object Array]';
+}
+// 是否为函数
+export function isFunction(value: any) {
+  return Object.prototype.toString.call(value) === '[object Function]';
+}
+// 是否为对象类型
+export function isObjectType(value: any) {
+  return typeof value === 'object';
+}
+
+// 拷贝只读属性
+export function copy(obj: object, exclude: string[]) {
+  const data = {};
+  for (const key in obj) {
+    if (!exclude.includes(key)) {
+      data[key] = (...arg: any[]) => (isFunction(obj[key]) ? obj[key](...arg) : obj[key]);
+    }
+  }
+  return data;
+}
+
+// 判断两个对象是否相等
+export function isEquals(source: object, target: object) {
+  if (!source || !target) {
+    return false;
+  }
+  if (Object.keys(source).length !== Object.keys(target).length) {
+    return false;
+  }
+
+  for (const key in source) {
+    if (isObjectType(target[key]) && isObjectType(source[key])) {
+      if (!isEquals(source[key], target[key])) {
+        return false;
+      }
+      continue;
+    }
+
+    if (target[key] !== source[key]) {
+      return false;
+    }
+  }
+  return true;
+}

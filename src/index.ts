@@ -3,10 +3,10 @@ import { scheduler } from './scheduler';
 import { readFileSync, ensureFile, writeFile } from 'fs-extra';
 import { readDirAndFile, resolve } from './utils';
 import requestMiddleware from './middlewares/requestMiddleware';
-import { VITE_STATIC_PATH, VITE_STATIC_RESOURCE_PATH, VITE_TARGET_STATIC_PATH } from './setting';
+import { VITE_STATIC_PATH, VITE_TARGET_STATIC_PATH } from './setting';
 import { script } from './api';
 
-export function CreateDevToolPlugin(): Plugin {
+export function createLsMonitorPlugin(): Plugin {
   return {
     name: 'vite-plugin-dev-tool',
     enforce: 'pre',

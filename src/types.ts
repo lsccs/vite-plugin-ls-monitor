@@ -16,11 +16,12 @@ export interface TransformSchedulerParams extends TransformParams {
 }
 
 export type AstProps = Array<AttributeNode | DirectiveNode>;
+// 埋点指令分割参数
 export interface EventPointData {
   name: string | undefined;
   data: string | undefined;
 }
-
+// 埋点触发参数
 export interface pointParams {
   id: number;
   event: string;
@@ -28,7 +29,7 @@ export interface pointParams {
   data: string;
   ctx: any;
 }
-
+// 节点类型
 export enum NodeTypes {
   ROOT = 0,
   ELEMENT = 1,
@@ -46,6 +47,7 @@ export enum NodeTypes {
   VNODE_CALL = 13,
 }
 
+// 埋点存储数据
 export interface DatabaseData {
   event: string;
   data: string;
@@ -53,4 +55,11 @@ export interface DatabaseData {
   componentPath: string;
   count: number;
   createTime: string;
+}
+
+// 内存变更记录标识
+export enum STORE_CHANGE_TAG {
+  UPDATE = 'update',
+  DELETE = 'delete',
+  ADD = 'add',
 }

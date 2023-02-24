@@ -23,6 +23,15 @@ export const VITE_TARGET_STATIC_PATH = `./${VITE_STATIC_RESOURCE}`;
 // -----------------------------------------
 // 数据库名称
 export const DATABASE_NAME = 'monitor-database';
+// 埋点列表存储对象名称
+export const STORE_POINT_NAME = 'monitor-log';
+// 本地存储变化对象名称 及 前缀
+export const LOCAL = '_local_store-log';
+export const SESSION = '_session_store-log';
 
-// 存储对象名称
-export const STORE_POINT_NAME = 'monitor-list';
+export const STORE_LIST = [STORE_POINT_NAME, LOCAL, SESSION];
+
+// -----------------------------------------
+// 内存数据变动 tag标识
+export const STORE_CHANGE_IDENT_OUT = '--';
+export const STORE_CHANGE_IDENT_IN = '%%';
