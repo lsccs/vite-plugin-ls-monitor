@@ -1,6 +1,8 @@
 import { Plugin, TransformResult } from 'vite';
-import { scheduler } from './scheduler';
 import { readFileSync, ensureFile, writeFile } from 'fs-extra';
+import pkg from '../package.json';
+
+import { scheduler } from './scheduler';
 import { readDirAndFile, resolve } from './utils';
 import requestMiddleware from './middlewares/requestMiddleware';
 import { VITE_STATIC_PATH, VITE_TARGET_STATIC_PATH } from './setting';
@@ -8,7 +10,7 @@ import { script } from './api';
 
 export function createLsMonitorPlugin(): Plugin {
   return {
-    name: 'vite-plugin-dev-tool',
+    name: pkg.name,
     enforce: 'pre',
 
     configureServer(server) {

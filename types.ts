@@ -1,5 +1,5 @@
 export * from './src/types';
-export { CreateDevToolPlugin } from './src/index';
+export { createLsMonitorPlugin } from './src/index';
 
 export interface Monitor {
   setHtml: (selector: string) => void;
