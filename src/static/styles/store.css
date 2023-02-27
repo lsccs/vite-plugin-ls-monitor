@@ -2,15 +2,16 @@
   font-family: 'Source Code Pro', 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
 }
 
-.ls-monitor-store-log .ls-store-obj-key {
-  color: #111;
-  font-size: 13px;
-}
-
 .ls-monitor-store-log .ls-store-obj-attr {
   color: #337ab7;
-  text-decoration: none;
+  text-decoration: underline;
   cursor: pointer;
+}
+
+.ls-monitor-store-log .ls-store-status-block {
+  padding: 2px 4px;
+  border-radius: 4px;
+  margin-bottom: 2px;
 }
 
 .ls-monitor-store-log .ls-store-obj-map {
@@ -22,9 +23,24 @@
 .ls-monitor-store-log .ls-store-obj-container {
   display: inline-block;
   cursor: pointer;
-  line-height: 1.7;
 }
+
+
 
 .ls-monitor-store-log .ls-store-indent-content {
   margin-left: 2em;
+}
+
+
+.ls-monitor-store-log .ls-store-obj-key-value {
+  display: inline-block;
+}
+.ls-store-indent-content .add {
+  background-color: var(--add-color);
+}
+.ls-store-indent-content .update {
+  background-color: var(--update-color);
+}
+.ls-store-indent-content .delete {
+  background-color: var(--delete-color);
 }

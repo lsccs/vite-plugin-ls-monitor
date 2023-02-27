@@ -5,7 +5,7 @@ export default defineConfig({
     'index.ts',
     'src/static/action/index.ts',
     'src/static/styles/index.css',
-    'src/static/template/**',
+    'src/static/template/*',
   ],
   format: ['esm'],
   dts: {

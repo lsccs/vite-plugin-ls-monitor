@@ -1,0 +1,172 @@
+// 创建内存记录标签
+import { LOCAL } from '../../../setting';
+import { getDB } from '../../action/database';
+import { innerTagStr, outTagStr, returnEventTag } from '../../action/memory';
+
+import {getID, isArray, isObjectOrArray, replaceClassName} from '../../../utils';
+import { getColon, getDiv, getObjectAndArrayMap, getObjectChar, splitStoreTag } from './utils';
+
+import type { ObjectTypeMap, StorageRootNode } from './types';
+import { objChar } from './types';
+
+// 类名
+const objectIndentContent = 'ls-store-indent-content';
+const objectContainer = 'ls-store-obj-container';
+const objectStatusBlock = 'ls-store-status-block';
+const attrClassName = 'ls-store-obj-attr';
+const objectKeyValueClass = 'ls-store-obj-key-value';
+const dataId = 'data-id';
+const hide = 'hide';
+const show = 'show';
+
+export function createStoreChangeHtml(root: Element) {
+  const className = '.ls-monitor-store-local-content';
+  getLocalAllData(LOCAL).then((data) => {
+    let result = generateHtml(data);
+
+    const local = root.querySelector(className);
+    if (local) {
+      result =
+        getDiv({ children: objChar.start }) +
+        getDiv({ children: result, className: objectIndentContent });
+      result += getDiv({ children: objChar.end });
+      local.innerHTML = result;
+      storeObjectEvent(root);
+    }
+  });
+}
+
+// 处理内存对象属性缩略点击
+function storeObjectEvent(root: Element) {
+  const objectMaps = root?.querySelectorAll(`.${objectContainer}`);
+
+  objectMaps?.forEach((item) => {
+    item.addEventListener('click', () => {
+      const id = item.getAttribute(dataId);
+      const target = document.querySelector(`.${objectIndentContent}[${dataId}="${id}"]`);
+      setObjectAttrVisible(target);
+    });
+  });
+}
+
+// 设置对象属性元素显示隐藏
+function setObjectAttrVisible(node: Element | null) {
+  if (!node) {
+    return;
+  }
+  const replaceClassNames = [hide, show];
+  if (node.className.includes(show)) {
+    replaceClassNames.reverse();
+  }
+  // @ts-ignore
+  replaceClassName(node, ...replaceClassNames);
+}
+
+// 获取 localStorage sessionStorage
+async function getLocalAllData(storage: string) {
+  const data: StorageRootNode = {};
+  const db = await getDB(storage);
+  const keys = await db.getDBAllKeys();
+  for (const k of keys) {
+    const valueObj = await db.getItem(k);
+    data[k.toString()] = {
+      value: generateStoreData(valueObj, outTagStr),
+      tagStr: outTagStr,
+      eventStr: returnEventTag(outTagStr),
+      route: [],
+    };
+  }
+  return data;
+}
+
+// 重新生成内存数据结构
+function generateStoreData(valueObj: object, tagStr: string): StorageRootNode {
+  return Object.keys(valueObj).reduce((pre, cur) => {
+    const changeLog = splitStoreTag(valueObj[cur], tagStr);
+    let storageRootNode: StorageRootNode | string = changeLog[changeLog.length - 1];
+    try {
+      const event = returnEventTag(tagStr);
+      const data = JSON.parse(storageRootNode.split(event)[0]);
+      if (isObjectOrArray(data)) {
+        storageRootNode = generateStoreData(data, innerTagStr);
+      }
+    } catch (e) {
+    } finally {
+      pre[cur] = {
+        value: storageRootNode,
+        route: changeLog,
+        tagStr: tagStr,
+        eventStr: returnEventTag(tagStr),
+      };
+    }
+    return pre;
+  }, (isArray(valueObj) ? [] : {}) as StorageRootNode);
+}
+
+// 循环遍历json生成节点
+function generateHtml(data: StorageRootNode) {
+  let result = '';
+  console.log(data, 'data');
+  for (const key in data as object) {
+    const { value, route, eventStr } = data[key];
+    const objectChar = getObjectChar(value);
+    // 兼容第一次循环
+    if (objectChar) {
+      let tag = '';
+      const v = value as unknown as StorageRootNode;
+      // 获取对象key的tag状态
+      if (route.length) {
+        const lastLog = route[route.length - 1];
+        tag = lastLog?.split(eventStr)[1];
+      }
+
+      result += generateObject(v, key, objectChar, tag);
+      continue;
+    }
+    // 获取对象属性的tag状态
+    const [v, tag] = (value as string).split(eventStr);
+    result += getObjectAttrDiv(key, v, tag);
+  }
+  return result;
+}
+
+// 生成对象节点
+function generateObject(
+  value: StorageRootNode,
+  key: string,
+  objectChar: ObjectTypeMap,
+  tag: string,
+) {
+  let result = '';
+  const objKey = key ? key + getColon() : '';
+  const objectAttrs = generateHtml(value);
+  const htmlAttrs = { [dataId]: getID() };
+  // 对象key + 缩略标识
+  const objContainer = getDiv({
+    children: objKey + getObjectAndArrayMap(objectChar),
+    className: `${objectContainer} ${objectStatusBlock} ${tag}`,
+    attrs: htmlAttrs,
+  });
+  // 对象内容，默认隐藏
+  const objectContent = getDiv({
+    children: objectAttrs,
+    className: objectIndentContent + ' ' + hide,
+    attrs: htmlAttrs,
+  });
+  result += getDiv({ children: objContainer + objectContent });
+
+  return result;
+}
+
+// 生成对象属性key-value
+function getObjectAttrDiv(key: string, value: string, tag: string) {
+  const k = getDiv({ children: key, className: attrClassName, tag: 'span' });
+  // 根据类型返回对应得样式
+  const v = getDiv({ children: value, tag: 'span' });
+  const content = getDiv({
+    children: k + getColon() + v,
+    className: `${objectKeyValueClass} ${objectStatusBlock} ${tag}`,
+  });
+  // 额外套一层 div，防止内容因为 inline-block 平铺在一行
+  return getDiv({ children: content });
+}

@@ -4,7 +4,7 @@
 import { LOCAL, SESSION, STORE_CHANGE_IDENT_OUT, STORE_CHANGE_IDENT_IN } from '../../../setting';
 import { DB, getDB } from '../database';
 import { STORE_CHANGE_TAG } from '../../../types';
-import { isEquals, isObject, copy } from '../../../utils';
+import {isEquals, isObject, copy, isObjectOrArray, isArray} from '../../../utils';
 
 // 缓存上一次的值
 const cache = {
@@ -69,7 +69,6 @@ async function diffChangeRecordLog(storeName: string, key: string, value: string
   const currenValue = JSON.parse(value);
   // 对比缓存和修改的值是否一致
   const storeValue = cache[storeName][key] || {};
-
   if (!isEquals(storeValue, currenValue)) {
     diffChangeRecordLogHost(preValue, currenValue, outTagStr, storeValue);
     db.put(preValue, key);
@@ -87,7 +86,7 @@ function diffChangeRecordLogHost(
   cacheValue?: any,
 ) {
   // 对比的值必须为对象
-  if (!isObject(currenValue)) {
+  if (!isObjectOrArray(currenValue)) {
     return currenValue;
   }
   let i;
@@ -104,8 +103,9 @@ function diffChangeRecordLogHost(
     // 当前值为对象 或者 缓存的值为空，进入判断
     // 缓存值为空则设置add标记
     // 判断是否需要合并上一个值（多层对象）
-    if (isObject(cur) || !pre) {
-      const childTag = diffChangeRecordLogHost({ ...pre }, cur, innerTagStr);
+    if (isObjectOrArray(cur) || !pre) {
+      const currentPreValue = lightCopy(pre, isArray(cur));
+      const childTag = diffChangeRecordLogHost(currentPreValue, cur, innerTagStr);
       preValue[k] = mergeStoreValue(preValue[k], childTag, pre, tagStr);
       continue;
     }
@@ -117,7 +117,7 @@ function diffChangeRecordLogHost(
   }
   // 查看剩余未匹配的 preKeys，标记删除
   Object.keys(preObjectMap).forEach((k) => {
-    preValue[k] += returnRecordTag('', STORE_CHANGE_TAG.DELETE, tagStr);
+    preValue[k] += returnRecordTag(preObjectMap[k], STORE_CHANGE_TAG.DELETE, tagStr);
   });
   return preValue;
 }
@@ -154,7 +154,7 @@ export const outTagStr = '||';
 export const innerTagStr = '@@';
 function returnRecordTag(value: Object | string, eventTag: string, ident = outTagStr) {
   const prefix = returnEventTag(ident);
-  if (isObject(value)) {
+  if (isObjectOrArray(value)) {
     value = JSON.stringify(value);
   }
   return `${ident}${value}${prefix}${eventTag}`;
@@ -165,4 +165,15 @@ function returnRecordTag(value: Object | string, eventTag: string, ident = outTa
  */
 export function returnEventTag(ident: string) {
   return ident === outTagStr ? STORE_CHANGE_IDENT_OUT : STORE_CHANGE_IDENT_IN;
+}
+
+/**
+ * 浅拷贝对象
+ * 当 obj 为空时，以 isArray 的值为准初始化
+ */
+export function lightCopy(obj: any, isShouldArray: boolean) {
+  if (!obj) {
+    return isShouldArray ? [] : {};
+  }
+  return isArray(obj) ? [...obj] : { ...obj };
 }

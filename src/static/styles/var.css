@@ -4,5 +4,9 @@
   --sub-color: #d0cfcf;
   --border-color: #eee;
   --color: #111;
+
+  --add-color: rgba(149, 211, 146, 0.2);
+  --update-color: rgba(248, 120, 32, 0.2);
+  --delete-color: rgba(255, 75, 75, 0.2);
 }
 
