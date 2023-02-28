@@ -2,8 +2,7 @@
 import { arrayChar, DivAttr, objChar, ObjectTypeMap } from './types';
 import { isArray, isObject } from '../../../utils';
 import { outTagStr } from '../../action/memory';
-
-const objectArrayMap = 'ls-store-obj-map';
+import { objectArrayMap } from '../../../enum/cssClass';
 
 export function getObjectChar(data: object | string | null): ObjectTypeMap | undefined {
   if (!data) {
@@ -17,9 +16,10 @@ export function getObjectChar(data: object | string | null): ObjectTypeMap | und
 }
 
 // 替换对象或数组缩略图
-export function getObjectAndArrayMap(objectChar: ObjectTypeMap) {
+export function getObjectAndArrayMap(objectChar: ObjectTypeMap, isArray: boolean, len: number) {
+  const pre = isArray ? `(${len})` : '';
   return getDiv({
-    children: objectChar.start + '...' + objectChar.end,
+    children: pre + objectChar.start + '...' + objectChar.end,
     className: objectArrayMap,
     tag: 'span',
   });

@@ -2,26 +2,34 @@
 import { LOCAL } from '../../../setting';
 import { getDB } from '../../action/database';
 import { innerTagStr, outTagStr, returnEventTag } from '../../action/memory';
-
-import {getID, isArray, isObjectOrArray, replaceClassName} from '../../../utils';
-import { getColon, getDiv, getObjectAndArrayMap, getObjectChar, splitStoreTag } from './utils';
+import { getID, isArray, isObjectOrArray, setObjectAttrVisible } from '../../../utils';
 
 import type { ObjectTypeMap, StorageRootNode } from './types';
 import { objChar } from './types';
 
-// 类名
-const objectIndentContent = 'ls-store-indent-content';
-const objectContainer = 'ls-store-obj-container';
-const objectStatusBlock = 'ls-store-status-block';
-const attrClassName = 'ls-store-obj-attr';
-const objectKeyValueClass = 'ls-store-obj-key-value';
-const dataId = 'data-id';
-const hide = 'hide';
-const show = 'show';
+import {
+  getColon,
+  getDiv,
+  getObjectAndArrayMap,
+  getObjectChar,
+  splitStoreTag,
+} from './utils';
+import {
+  attrClassName,
+  dataId,
+  hide,
+  objectContainer,
+  objectArrayMap,
+  objectIndentContent,
+  objectKeyValueClass,
+  objectMapIdent,
+  objectStatusBlock,
+} from '../../../enum/cssClass';
 
 export function createStoreChangeHtml(root: Element) {
   const className = '.ls-monitor-store-local-content';
   getLocalAllData(LOCAL).then((data) => {
+    console.log(data, 'data');
     let result = generateHtml(data);
 
     const local = root.querySelector(className);
@@ -44,22 +52,14 @@ function storeObjectEvent(root: Element) {
     item.addEventListener('click', () => {
       const id = item.getAttribute(dataId);
       const target = document.querySelector(`.${objectIndentContent}[${dataId}="${id}"]`);
+      const map = item.querySelector(`.${objectArrayMap}`);
+      const mapIdent = item.querySelector(`.${objectMapIdent}`);
+
+      setObjectAttrVisible(map);
+      setObjectAttrVisible(mapIdent);
       setObjectAttrVisible(target);
     });
   });
-}
-
-// 设置对象属性元素显示隐藏
-function setObjectAttrVisible(node: Element | null) {
-  if (!node) {
-    return;
-  }
-  const replaceClassNames = [hide, show];
-  if (node.className.includes(show)) {
-    replaceClassNames.reverse();
-  }
-  // @ts-ignore
-  replaceClassName(node, ...replaceClassNames);
 }
 
 // 获取 localStorage sessionStorage
@@ -106,7 +106,6 @@ function generateStoreData(valueObj: object, tagStr: string): StorageRootNode {
 // 循环遍历json生成节点
 function generateHtml(data: StorageRootNode) {
   let result = '';
-  console.log(data, 'data');
   for (const key in data as object) {
     const { value, route, eventStr } = data[key];
     const objectChar = getObjectChar(value);
@@ -138,24 +137,48 @@ function generateObject(
   tag: string,
 ) {
   let result = '';
-  const objKey = key ? key + getColon() : '';
   const objectAttrs = generateHtml(value);
-  const htmlAttrs = { [dataId]: getID() };
-  // 对象key + 缩略标识
-  const objContainer = getDiv({
-    children: objKey + getObjectAndArrayMap(objectChar),
-    className: `${objectContainer} ${objectStatusBlock} ${tag}`,
-    attrs: htmlAttrs,
-  });
+  const { attrs, container } = getObjectAttrMap(value, key, objectChar, tag);
+
   // 对象内容，默认隐藏
   const objectContent = getDiv({
     children: objectAttrs,
-    className: objectIndentContent + ' ' + hide,
-    attrs: htmlAttrs,
+    className: `${objectIndentContent} ${hide}`,
+    attrs,
   });
-  result += getDiv({ children: objContainer + objectContent });
+  result += getDiv({ children: container + objectContent });
 
   return result;
+}
+
+// 对象key + 缩略标识
+function getObjectAttrMap(
+  value: StorageRootNode,
+  key: string,
+  objectChar: ObjectTypeMap,
+  tag: string,
+) {
+  const objKey = key ? key + getColon() : '';
+  const htmlAttrs = { [dataId]: getID() };
+  // 对象缩略展开占位标识
+  const mapIdent = getDiv({
+    children: isArray(value) ? `Array(${value.length})` : '',
+    className: `${objectMapIdent} ${hide}`,
+    tag: 'span',
+  });
+  // 对象key + 缩略标识
+  const objContainer = getDiv({
+    children:
+      objKey +
+      getObjectAndArrayMap(objectChar, isArray(value), value.length as unknown as number) +
+      mapIdent,
+    className: `${objectContainer} ${objectStatusBlock} ${tag}`,
+    attrs: htmlAttrs,
+  });
+  return {
+    attrs: htmlAttrs,
+    container: objContainer,
+  };
 }
 
 // 生成对象属性key-value

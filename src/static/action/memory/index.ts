@@ -4,7 +4,15 @@
 import { LOCAL, SESSION, STORE_CHANGE_IDENT_OUT, STORE_CHANGE_IDENT_IN } from '../../../setting';
 import { DB, getDB } from '../database';
 import { STORE_CHANGE_TAG } from '../../../types';
-import {isEquals, isObject, copy, isObjectOrArray, isArray} from '../../../utils';
+import {
+  isEquals,
+  isObject,
+  copy,
+  isObjectOrArray,
+  isArray,
+  isObjectType,
+  getObjectType, jsonObject
+} from '../../../utils';
 
 // 缓存上一次的值
 const cache = {
@@ -85,7 +93,7 @@ function diffChangeRecordLogHost(
   tagStr: string,
   cacheValue?: any,
 ) {
-  // 对比的值必须为对象
+  // 对比的值不是对象类型，或者类型不一致 则直接返回
   if (!isObjectOrArray(currenValue)) {
     return currenValue;
   }
@@ -129,21 +137,22 @@ function mergeStoreValue(preValue: string, data: any, pre: object, tagStr: strin
     pre ? STORE_CHANGE_TAG.UPDATE : STORE_CHANGE_TAG.ADD,
     tagStr,
   );
-  if (!pre || !preValue || !isObject(pre)) {
+
+  // 类型不一致，或者无上一次的值，则不用合并
+  if (!pre || getObjectType(jsonObject(data)) !== getObjectType(pre)) {
     return `${preValue || ''}${result}`;
   }
 
+  const dataObject = jsonObject(data);
   // 截取最新的值
-  const dataObject = isObject(data) ? data : JSON.parse(data);
-
   const tagValue = preValue.split(tagStr);
   const lastTag = tagValue[tagValue.length - 1];
   const value = JSON.parse(lastTag.split(STORE_CHANGE_IDENT_OUT)[0]);
 
+  const eventIdent = returnEventTag(tagStr) + STORE_CHANGE_TAG.UPDATE;
   for (const key in dataObject) {
     value[key] = `${value[key] || ''}${dataObject[key]}`;
   }
-  const eventIdent = returnEventTag(tagStr) + STORE_CHANGE_TAG.UPDATE;
   return preValue.replace(tagValue[tagValue.length - 1], JSON.stringify(value) + eventIdent);
 }
 
@@ -172,7 +181,7 @@ export function returnEventTag(ident: string) {
  * 当 obj 为空时，以 isArray 的值为准初始化
  */
 export function lightCopy(obj: any, isShouldArray: boolean) {
-  if (!obj) {
+  if (!obj || !isObjectType(obj)) {
     return isShouldArray ? [] : {};
   }
   return isArray(obj) ? [...obj] : { ...obj };

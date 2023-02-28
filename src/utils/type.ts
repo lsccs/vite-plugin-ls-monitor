@@ -10,6 +10,10 @@ export function isArray(value: any) {
 export function isObjectOrArray(value: any) {
   return isObject(value) || isArray(value);
 }
+// 是否为对象或者数组
+export function getObjectType(value: any) {
+  return Object.prototype.toString.call(value);
+}
 // 是否为函数
 export function isFunction(value: any) {
   return Object.prototype.toString.call(value) === '[object Function]';

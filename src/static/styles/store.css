@@ -4,8 +4,10 @@
 
 .ls-monitor-store-log .ls-store-obj-attr {
   color: #337ab7;
-  text-decoration: underline;
   cursor: pointer;
+}
+.ls-monitor-store-log .ls-store-obj-attr:hover {
+  text-decoration: underline;
 }
 
 .ls-monitor-store-log .ls-store-status-block {
@@ -14,7 +16,7 @@
   margin-bottom: 2px;
 }
 
-.ls-monitor-store-log .ls-store-obj-map {
+.ls-monitor-store-log .ls-store-obj-map, .ls-monitor-store-log .ls-store-obj-map-ident {
   font-size: 0.8em;
   user-select: none;
   color: hsl(0, 0%, 30%);

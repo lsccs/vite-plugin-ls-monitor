@@ -1,6 +1,6 @@
 import path from 'path';
 import { stat, readdir } from 'fs-extra';
-import { isFunction } from './type';
+import {isFunction, isObjectType} from './type';
 
 export const resolve = (filePath: string) => path.resolve(__dirname, filePath);
 
@@ -62,3 +62,7 @@ export function copy(obj: object, exclude: string[]) {
   return data;
 }
 
+// json 转对象
+export function jsonObject(data: any) {
+  return isObjectType(data) ? data : JSON.parse(data);
+}
