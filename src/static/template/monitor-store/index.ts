@@ -5,7 +5,7 @@ import { innerTagStr, outTagStr, returnEventTag } from '../../action/memory';
 import { getID, isArray, isObjectOrArray, setObjectAttrVisible } from '../../../utils';
 
 import type { ObjectTypeMap, StorageRootNode } from './types';
-import { objChar } from './types';
+import {EventValue, objChar} from './types';
 
 import {
   getColon,
@@ -86,7 +86,8 @@ function generateStoreData(valueObj: object, tagStr: string): StorageRootNode {
     let storageRootNode: StorageRootNode | string = changeLog[changeLog.length - 1];
     try {
       const event = returnEventTag(tagStr);
-      const data = JSON.parse(storageRootNode.split(event)[0]);
+      const { value } = getEventValueTag(storageRootNode, event);
+      const data = JSON.parse(value);
       if (isObjectOrArray(data)) {
         storageRootNode = generateStoreData(data, innerTagStr);
       }
@@ -116,14 +117,15 @@ function generateHtml(data: StorageRootNode) {
       // 获取对象key的tag状态
       if (route.length) {
         const lastLog = route[route.length - 1];
-        tag = lastLog?.split(eventStr)[1];
+        const eventValue = getEventValueTag(lastLog, eventStr);
+        tag = eventValue.tag;
       }
 
       result += generateObject(v, key, objectChar, tag);
       continue;
     }
     // 获取对象属性的tag状态
-    const [v, tag] = (value as string).split(eventStr);
+    const { value: v, tag } = getEventValueTag(value as string, eventStr);
     result += getObjectAttrDiv(key, v, tag);
   }
   return result;
@@ -192,4 +194,14 @@ function getObjectAttrDiv(key: string, value: string, tag: string) {
   });
   // 额外套一层 div，防止内容因为 inline-block 平铺在一行
   return getDiv({ children: content });
+}
+
+// 获取 tag
+function getEventValueTag(value: string, eventStr: string): EventValue {
+  const [v, ...tags] = value.split(eventStr);
+  return {
+    value: v,
+    tag: tags[tags.length - 1],
+    tags,
+  };
 }

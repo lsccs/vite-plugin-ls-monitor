@@ -125,7 +125,7 @@ function diffChangeRecordLogHost(
   }
   // 查看剩余未匹配的 preKeys，标记删除
   Object.keys(preObjectMap).forEach((k) => {
-    preValue[k] += returnRecordTag(preObjectMap[k], STORE_CHANGE_TAG.DELETE, tagStr);
+    preValue[k] += returnEventTag(tagStr) + STORE_CHANGE_TAG.DELETE;
   });
   return preValue;
 }
@@ -142,7 +142,6 @@ function mergeStoreValue(preValue: string, data: any, pre: object, tagStr: strin
   if (!pre || getObjectType(jsonObject(data)) !== getObjectType(pre)) {
     return `${preValue || ''}${result}`;
   }
-
   const dataObject = jsonObject(data);
   // 截取最新的值
   const tagValue = preValue.split(tagStr);
@@ -153,7 +152,7 @@ function mergeStoreValue(preValue: string, data: any, pre: object, tagStr: strin
   for (const key in dataObject) {
     value[key] = `${value[key] || ''}${dataObject[key]}`;
   }
-  return preValue.replace(tagValue[tagValue.length - 1], JSON.stringify(value) + eventIdent);
+  return preValue + tagStr + JSON.stringify(value) + eventIdent;
 }
 
 /**
@@ -178,11 +177,8 @@ export function returnEventTag(ident: string) {
 
 /**
  * 浅拷贝对象
- * 当 obj 为空时，以 isArray 的值为准初始化
  */
 export function lightCopy(obj: any, isShouldArray: boolean) {
-  if (!obj || !isObjectType(obj)) {
-    return isShouldArray ? [] : {};
-  }
-  return isArray(obj) ? [...obj] : { ...obj };
+  const isArr = isArray(obj);
+  return isShouldArray ? [...(isArr ? obj : [])] : { ...obj };
 }

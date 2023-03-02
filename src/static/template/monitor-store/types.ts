@@ -18,6 +18,13 @@ export interface ObjectTypeMap {
   end: string;
 }
 
+// 拆分事件标识
+export interface EventValue {
+  value: string;
+  tag: string;
+  tags: string[];
+}
+
 export type StorageRootNode = { [k in string]: StorageNode };
 
 // 对象标识
