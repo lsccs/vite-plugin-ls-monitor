@@ -120,15 +120,15 @@ function diffChangeRecordLogHost(
     Reflect.deleteProperty(preObjectMap, k);
 
     if (isObjectOrArray(cur) || !pre) {
+
       const currentPreValue = lightCopy(pre, isArray(cur));
-      const childTag = diffChangeRecordLogHost(currentPreValue, cur, innerTagStr);
+      const childTag = diffChangeRecordLogHost(currentPreValue, cur, innerTagStr, currentPreValue);
       preValue[k] = mergeStoreValue(preValue[k], childTag, pre, tagStr);
       continue;
     }
     if (pre !== cur) {
       // cacheValue 为空时，说明是正在循环子对象，此时，需要忽略上一次的值，直接覆盖
-      preValue[k] =
-        (cacheValue ? preValue[k] : '') + returnRecordTag(cur, STORE_CHANGE_TAG.UPDATE, tagStr);
+      preValue[k] = returnRecordTag(cur, STORE_CHANGE_TAG.UPDATE, tagStr);
     }
   }
   // 查看剩余未匹配的 preKeys，标记删除
