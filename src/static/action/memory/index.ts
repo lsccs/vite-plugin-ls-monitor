@@ -73,13 +73,13 @@ async function recordChangeLog(storeName: string, key: string, value: string) {
  * 对比两次修改结果，添加记录
  */
 async function diffChangeRecordLog(storeName: string, key: string, value: string, db: DB) {
-  const preValue = (await db.getItem(key)) || {};
+  const preValue = (await db.getItem(key));
   const currenValue = JSON.parse(value);
   // 对比缓存和修改的值是否一致
-  const storeValue = cache[storeName][key] || {};
+  const storeValue = cache[storeName][key];
   if (!isEquals(storeValue, currenValue)) {
-    diffChangeRecordLogHost(preValue, currenValue, outTagStr, storeValue);
-    db.put(preValue, key);
+    const value = diffChangeRecordLogHost(preValue, currenValue, outTagStr, storeValue);
+    db.put(value, key);
   }
 }
 
@@ -95,22 +95,30 @@ function diffChangeRecordLogHost(
 ) {
   // 对比的值不是对象类型，或者类型不一致 则直接返回
   if (!isObjectOrArray(currenValue)) {
-    return currenValue;
+    const tag = cacheValue ? STORE_CHANGE_TAG.UPDATE : STORE_CHANGE_TAG.ADD;
+    return (preValue || '') + returnRecordTag(currenValue, tag, tagStr);
   }
+
+  // if (!preValue) {
+  //   return diffChangeRecordLogHost();
+  // }
+
+  const cacheValueMap = !isObjectOrArray(cacheValue) ? {} : cacheValue;
+ 
+  // 初始化
   let i;
-  const preObjectMap = { ...(cacheValue || preValue) };
+  preValue = preValue || lightCopy({}, isArray(currenValue));
+
+  const preObjectMap = { ...cacheValueMap };
   const curKeys = Object.keys(currenValue);
 
   for (i = 0; i < curKeys.length; i++) {
     const k = curKeys[i];
     const cur = currenValue[k];
-    // 当缓存为空时，使用 preValue
-    const pre = (cacheValue || preValue)[k];
+    
+    const pre = cacheValueMap[k];
     Reflect.deleteProperty(preObjectMap, k);
 
-    // 当前值为对象 或者 缓存的值为空，进入判断
-    // 缓存值为空则设置add标记
-    // 判断是否需要合并上一个值（多层对象）
     if (isObjectOrArray(cur) || !pre) {
       const currentPreValue = lightCopy(pre, isArray(cur));
       const childTag = diffChangeRecordLogHost(currentPreValue, cur, innerTagStr);
@@ -139,6 +147,7 @@ function mergeStoreValue(preValue: string, data: any, pre: object, tagStr: strin
   );
 
   // 类型不一致，或者无上一次的值，则不用合并
+  debugger;
   if (!pre || getObjectType(jsonObject(data)) !== getObjectType(pre)) {
     return `${preValue || ''}${result}`;
   }

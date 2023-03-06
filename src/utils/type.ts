@@ -25,9 +25,10 @@ export function isObjectType(value: any) {
 
 // 判断两个对象是否相等
 export function isEquals(source: object, target: object) {
-  if (!source || !target) {
-    return false;
+  if (!isObjectOrArray(source) || !isObjectOrArray(target)) {
+    return source === target;
   }
+  
   if (Object.keys(source).length !== Object.keys(target).length) {
     return false;
   }
