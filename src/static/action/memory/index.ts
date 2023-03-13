@@ -1,17 +1,16 @@
 /**
  *  本地存储监听初始化
  */
-import { LOCAL, SESSION, STORE_CHANGE_IDENT_OUT, STORE_CHANGE_IDENT_IN } from '../../../setting';
+import { LOCAL, SESSION, STORE_CHANGE_IDENT, STORE_EVENT_IDENT } from '../../../setting';
 import { DB, getDB } from '../database';
 import { STORE_CHANGE_TAG } from '../../../types';
 import {
   isEquals,
-  isObject,
   copy,
   isObjectOrArray,
   isArray,
-  isObjectType,
-  getObjectType, jsonObject
+  getObjectType,
+  jsonObject,
 } from '../../../utils';
 
 // 缓存上一次的值
@@ -24,6 +23,7 @@ const storage = {
   [SESSION]: sessionStorage,
   [LOCAL]: localStorage,
 };
+export const getNextIndex = (i = 0) => ++i;
 
 listeningMemory();
 export function listeningMemory() {
@@ -73,12 +73,12 @@ async function recordChangeLog(storeName: string, key: string, value: string) {
  * 对比两次修改结果，添加记录
  */
 async function diffChangeRecordLog(storeName: string, key: string, value: string, db: DB) {
-  const preValue = (await db.getItem(key));
+  const preValue = await db.getItem(key);
   const currenValue = JSON.parse(value);
   // 对比缓存和修改的值是否一致
   const storeValue = cache[storeName][key];
   if (!isEquals(storeValue, currenValue)) {
-    const value = diffChangeRecordLogHost(preValue, currenValue, outTagStr, storeValue);
+    const value = diffChangeRecordLogHost(preValue, currenValue, getNextIndex(), storeValue);
     db.put(value, key);
   }
 }
@@ -88,100 +88,104 @@ async function diffChangeRecordLog(storeName: string, key: string, value: string
  * 例: ||ls:add, 内层对象使用 @@
  */
 function diffChangeRecordLogHost(
-  preValue: any,
+  preValue: string,
   currenValue: any,
-  tagStr: string,
+  tagIndent: number,
   cacheValue?: any,
 ) {
-  // 对比的值不是对象类型，或者类型不一致 则直接返回
-  if (!isObjectOrArray(currenValue)) {
+  // 当前值不是对象，或者 缓存的值为空，则无需对比
+  if (!isObjectOrArray(currenValue) || !cacheValue) {
     const tag = cacheValue ? STORE_CHANGE_TAG.UPDATE : STORE_CHANGE_TAG.ADD;
-    return (preValue || '') + returnRecordTag(currenValue, tag, tagStr);
+    return returnRecordTag(preValue, currenValue, tag, tagIndent);
   }
 
-  // if (!preValue) {
-  //   return diffChangeRecordLogHost();
-  // }
+  if (getObjectType(currenValue) !== getObjectType(cacheValue)) {
+    return returnRecordTag(preValue, currenValue, STORE_CHANGE_TAG.UPDATE, tagIndent);
+  }
 
-  const cacheValueMap = !isObjectOrArray(cacheValue) ? {} : cacheValue;
- 
   // 初始化
-  let i;
-  preValue = preValue || lightCopy({}, isArray(currenValue));
+  const nextTagIndent = getNextIndex(tagIndent);
+  const deleteKeys = { ...cacheValue };
 
-  const preObjectMap = { ...cacheValueMap };
-  const curKeys = Object.keys(currenValue);
+  for (const key in currenValue) {
+    const cur = currenValue[key];
+    const pre = cacheValue[key];
 
-  for (i = 0; i < curKeys.length; i++) {
-    const k = curKeys[i];
-    const cur = currenValue[k];
-    
-    const pre = cacheValueMap[k];
-    Reflect.deleteProperty(preObjectMap, k);
-
-    if (isObjectOrArray(cur) || !pre) {
-
-      const currentPreValue = lightCopy(pre, isArray(cur));
-      const childTag = diffChangeRecordLogHost(currentPreValue, cur, innerTagStr, currentPreValue);
-      preValue[k] = mergeStoreValue(preValue[k], childTag, pre, tagStr);
-      continue;
-    }
-    if (pre !== cur) {
-      // cacheValue 为空时，说明是正在循环子对象，此时，需要忽略上一次的值，直接覆盖
-      preValue[k] = returnRecordTag(cur, STORE_CHANGE_TAG.UPDATE, tagStr);
-    }
+    currenValue[key] = diffChangeRecordLogHost('', cur, nextTagIndent, pre);
+    Reflect.deleteProperty(deleteKeys, key);
   }
   // 查看剩余未匹配的 preKeys，标记删除
-  Object.keys(preObjectMap).forEach((k) => {
-    preValue[k] += returnEventTag(tagStr) + STORE_CHANGE_TAG.DELETE;
+  Object.keys(deleteKeys).forEach((k) => {
+    currenValue[k] = returnRecordTag(currenValue[k], '', STORE_CHANGE_TAG.DELETE, tagIndent);
   });
-  return preValue;
+  // 合并
+  return mergeStoreValue(preValue, currenValue, cacheValue, tagIndent);
 }
 
 // 截取最新得值，覆盖修改
-function mergeStoreValue(preValue: string, data: any, pre: object, tagStr: string) {
-  const result = returnRecordTag(
-    data,
-    pre ? STORE_CHANGE_TAG.UPDATE : STORE_CHANGE_TAG.ADD,
-    tagStr,
-  );
+function mergeStoreValue(preValue: string, data: any, pre: object, tagIndent: number) {
+  const tagStr = returnStatusTag(tagIndent);
+  const event = returnEventTag(tagIndent);
 
-  // 类型不一致，或者无上一次的值，则不用合并
-  debugger;
-  if (!pre || getObjectType(jsonObject(data)) !== getObjectType(pre)) {
-    return `${preValue || ''}${result}`;
-  }
   const dataObject = jsonObject(data);
   // 截取最新的值
   const tagValue = preValue.split(tagStr);
   const lastTag = tagValue[tagValue.length - 1];
-  const value = JSON.parse(lastTag.split(STORE_CHANGE_IDENT_OUT)[0]);
+  const value = JSON.parse(lastTag.split(event)[0]);
 
-  const eventIdent = returnEventTag(tagStr) + STORE_CHANGE_TAG.UPDATE;
   for (const key in dataObject) {
-    value[key] = `${value[key] || ''}${dataObject[key]}`;
+    const cur = value[key] || '';
+    const tag = cur ? returnStatusTag(getNextIndex(tagIndent)) : '';
+    value[key] = cur + tag + dataObject[key];
   }
-  return preValue + tagStr + JSON.stringify(value) + eventIdent;
+  return returnRecordTag(preValue, JSON.stringify(value), STORE_CHANGE_TAG.UPDATE, tagIndent);
 }
 
 /**
  * 添加 tag
  */
-export const outTagStr = '||';
-export const innerTagStr = '@@';
-function returnRecordTag(value: Object | string, eventTag: string, ident = outTagStr) {
-  const prefix = returnEventTag(ident);
+function returnRecordTag(
+  preValue: any,
+  value: Recordable | string,
+  eventTag: STORE_CHANGE_TAG,
+  ident: number,
+) {
+  const tag = returnStatusTag(ident);
+  const event = returnEventTag(ident);
   if (isObjectOrArray(value)) {
+    addRecordEventTag(value as Recordable, getNextIndex(ident), eventTag);
     value = JSON.stringify(value);
   }
-  return `${ident}${value}${prefix}${eventTag}`;
+  return `${preValue ? preValue + tag : ''}${value}${event}${eventTag}`;
+}
+
+/**
+ * 递归添加对象标签
+ * @param value
+ */
+function addRecordEventTag(value: Recordable, ident: number, eventTag: STORE_CHANGE_TAG) {
+  const event = returnEventTag(ident);
+  for (const key in value) {
+    if (isObjectOrArray(value[key])) {
+      value[key] = addRecordEventTag(value[key], getNextIndex(ident), eventTag);
+      continue;
+    }
+    value[key] += event + eventTag;
+  }
 }
 
 /**
  * 获取事件标识
  */
-export function returnEventTag(ident: string) {
-  return ident === outTagStr ? STORE_CHANGE_IDENT_OUT : STORE_CHANGE_IDENT_IN;
+export function returnEventTag(ident: number) {
+  const str = returnStatusTag(ident);
+  return str.replaceAll(STORE_CHANGE_IDENT, STORE_EVENT_IDENT);
+}
+/**
+ * 获取状态标识
+ */
+export function returnStatusTag(index: number) {
+  return `${STORE_CHANGE_IDENT}${index}${STORE_CHANGE_IDENT}`;
 }
 
 /**

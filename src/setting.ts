@@ -33,5 +33,5 @@ export const STORE_LIST = [STORE_POINT_NAME, LOCAL, SESSION];
 
 // -----------------------------------------
 // 内存数据变动 tag标识
-export const STORE_CHANGE_IDENT_OUT = '--';
-export const STORE_CHANGE_IDENT_IN = '%%';
+export const STORE_CHANGE_IDENT = '@';
+export const STORE_EVENT_IDENT = '-';

@@ -1,7 +1,6 @@
 // 获取对象标识
 import { arrayChar, DivAttr, objChar, ObjectTypeMap } from './types';
 import { isArray, isObject } from '../../../utils';
-import { outTagStr } from '../../action/memory';
 import { objectArrayMap } from '../../../enum/cssClass';
 
 export function getObjectChar(data: object | string | null): ObjectTypeMap | undefined {
@@ -39,7 +38,7 @@ export function getDiv({ children, className, tag = 'div', attrs = {} }: DivAttr
 }
 
 // 替换内存标识
-export function splitStoreTag(value: string, tagStr = outTagStr) {
+export function splitStoreTag(value: string, tagStr: string) {
   if (!value) return [];
   return value.split(tagStr);
 }

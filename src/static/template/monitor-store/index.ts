@@ -1,19 +1,13 @@
 // 创建内存记录标签
 import { LOCAL } from '../../../setting';
 import { getDB } from '../../action/database';
-import { innerTagStr, outTagStr, returnEventTag } from '../../action/memory';
+import { returnEventTag, returnStatusTag, getNextIndex } from '../../action/memory';
 import { getID, isArray, isObjectOrArray, setObjectAttrVisible } from '../../../utils';
 
 import type { ObjectTypeMap, StorageRootNode } from './types';
-import {EventValue, objChar} from './types';
+import { EventValue, objChar } from './types';
 
-import {
-  getColon,
-  getDiv,
-  getObjectAndArrayMap,
-  getObjectChar,
-  splitStoreTag,
-} from './utils';
+import { getColon, getDiv, getObjectAndArrayMap, getObjectChar, splitStoreTag } from './utils';
 import {
   attrClassName,
   dataId,
@@ -67,12 +61,13 @@ async function getLocalAllData(storage: string) {
   const data: StorageRootNode = {};
   const db = await getDB(storage);
   const keys = await db.getDBAllKeys();
+  const tag = getNextIndex();
   for (const k of keys) {
     const valueObj = await db.getItem(k);
     data[k.toString()] = {
-      value: generateStoreData(valueObj, outTagStr),
-      tagStr: outTagStr,
-      eventStr: returnEventTag(outTagStr),
+      value: generateStoreData(valueObj, tag),
+      tagStr: returnStatusTag(tag),
+      eventStr: returnEventTag(tag),
       route: [],
     };
   }
@@ -80,24 +75,25 @@ async function getLocalAllData(storage: string) {
 }
 
 // 重新生成内存数据结构
-function generateStoreData(valueObj: object, tagStr: string): StorageRootNode {
+function generateStoreData(valueObj: object, tagIndex: number): StorageRootNode {
   return Object.keys(valueObj).reduce((pre, cur) => {
+    const tagStr = returnStatusTag(tagIndex);
     const changeLog = splitStoreTag(valueObj[cur], tagStr);
     let storageRootNode: StorageRootNode | string = changeLog[changeLog.length - 1];
     try {
-      const event = returnEventTag(tagStr);
+      const event = returnEventTag(tagIndex);
       const { value } = getEventValueTag(storageRootNode, event);
       const data = JSON.parse(value);
       if (isObjectOrArray(data)) {
-        storageRootNode = generateStoreData(data, innerTagStr);
+        storageRootNode = generateStoreData(data, getNextIndex(tagIndex));
       }
     } catch (e) {
     } finally {
       pre[cur] = {
         value: storageRootNode,
         route: changeLog,
-        tagStr: tagStr,
-        eventStr: returnEventTag(tagStr),
+        tagStr,
+        eventStr: returnEventTag(tagIndex),
       };
     }
     return pre;
