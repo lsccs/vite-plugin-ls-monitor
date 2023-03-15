@@ -2,14 +2,14 @@ import { defineConfig } from 'tsup';
 
 export default defineConfig({
   entry: [
-    'index.ts',
-    'src/static/action/index.ts',
+    'memory.ts',
+    'src/static/action/memory.ts',
     'src/static/styles/index.css',
     'src/static/template/*',
   ],
   format: ['esm'],
   dts: {
-    entry: './index.ts',
+    entry: './memory.ts',
   },
   splitting: false,
   clean: true,

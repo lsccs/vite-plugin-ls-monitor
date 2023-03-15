@@ -1,7 +1,7 @@
 // 创建内存记录标签
 import { LOCAL } from '../../../setting';
-import { getDB } from '../../action/database';
-import { returnEventTag, returnStatusTag, getNextIndex } from '../../action/memory';
+import { getDB } from '../../../core/database';
+import { returnEventTag, returnStatusTag, getNextIndex } from '../../../core/memory';
 import { getID, isArray, isObjectOrArray, setObjectAttrVisible } from '../../../utils';
 
 import type { ObjectTypeMap, StorageRootNode } from './types';

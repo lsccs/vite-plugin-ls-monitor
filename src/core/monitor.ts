@@ -1,7 +1,7 @@
-import { LISTENING_EVENT } from '../../setting';
-import { DatabaseData, pointParams } from '../../types';
+import { LISTENING_EVENT } from '../setting';
+import { DatabaseData, pointParams } from '../types';
 import { getDB } from './database';
-import { dateFormat } from '../../utils';
+import { dateFormat } from '../utils';
 
 // 埋点事件入口
 window[LISTENING_EVENT] = async (data: pointParams) => {

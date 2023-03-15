@@ -2,6 +2,8 @@ import { TransformResult } from 'vite';
 import { AttributeNode, DirectiveNode, RootNode } from '@vue/compiler-core';
 import MagicString from 'magic-string';
 
+export * from './core/types';
+
 export type SchedulerCallback = (result: TransformResult) => void;
 
 export interface TransformParams {

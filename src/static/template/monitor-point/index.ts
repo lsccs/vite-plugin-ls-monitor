@@ -1,6 +1,6 @@
 // 创建埋点标签
 import { DatabaseData } from '../../../types';
-import { getDB } from '../../action/database';
+import { getDB } from '../../../core/database';
 
 export function createPointListHtml(root: Element) {
   const listClass = '.ls-monitor-point-list';

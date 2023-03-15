@@ -1,7 +1,7 @@
 /**
  * 创建数据库
  */
-import { DATABASE_NAME, STORE_LIST, STORE_POINT_NAME } from '../../../setting';
+import { DATABASE_NAME, STORE_LIST, STORE_POINT_NAME } from '../../setting';
 
 let db: IDBDatabase | null = null;
 type Callback = (db: IDBDatabase | null) => void;

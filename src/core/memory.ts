@@ -1,9 +1,9 @@
 /**
  *  本地存储监听初始化
  */
-import { LOCAL, SESSION, STORE_CHANGE_IDENT, STORE_EVENT_IDENT } from '../../../setting';
-import { DB, getDB } from '../database';
-import { STORE_CHANGE_TAG } from '../../../types';
+import { LOCAL, SESSION, STORE_CHANGE_IDENT, STORE_EVENT_IDENT } from '../setting';
+import { DB, getDB } from './database';
+import { STORE_CHANGE_TAG } from '../types';
 import {
   isEquals,
   copy,
@@ -11,7 +11,7 @@ import {
   isArray,
   getObjectType,
   jsonObject,
-} from '../../../utils';
+} from '../utils';
 
 // 缓存上一次的值
 const cache = {
@@ -24,6 +24,8 @@ const storage = {
   [LOCAL]: localStorage,
 };
 export const getNextIndex = (i = 0) => ++i;
+
+const channel = new MessageChannel();
 
 listeningMemory();
 export function listeningMemory() {
@@ -50,9 +52,9 @@ function local(storageName: string) {
   return (key: string, value: string) => {
     const cacheStore = cache[storageName];
     cacheStore[key] = JSON.parse(store.getItem(key));
-
     store.setItem(key, value);
-    recordChangeLog(storageName, key, value);
+    channel.port1.onmessage = () => recordChangeLog(storageName, key, value);
+    channel.port2.postMessage('');
   };
 }
 
@@ -64,6 +66,9 @@ async function recordChangeLog(storeName: string, key: string, value: string) {
   if (!db) {
     console.error('indexedDB connect error');
     return Promise.reject();
+  }
+  for (let i = 0; i < 90000000000000000000000; i++) {
+    console.log('okkkkk')
   }
   await diffChangeRecordLog(storeName, key, value, db);
   return Promise.resolve();
@@ -116,16 +121,21 @@ function diffChangeRecordLogHost(
   }
   // 查看剩余未匹配的 preKeys，标记删除
   Object.keys(deleteKeys).forEach((k) => {
-    currenValue[k] = returnRecordTag(currenValue[k], '', STORE_CHANGE_TAG.DELETE, tagIndent);
+    currenValue[k] = returnRecordTag(currenValue[k], '', STORE_CHANGE_TAG.DELETE, nextTagIndent);
   });
   // 合并
-  return mergeStoreValue(preValue, currenValue, cacheValue, tagIndent);
+  return mergeStoreValue(preValue, currenValue, tagIndent);
 }
 
 // 截取最新得值，覆盖修改
-function mergeStoreValue(preValue: string, data: any, pre: object, tagIndent: number) {
+function mergeStoreValue(preValue: string, data: any, tagIndent: number) {
+  // 当 preValue 为空时，不需要合并
+  if (!preValue) {
+    return data;
+  }
   const tagStr = returnStatusTag(tagIndent);
   const event = returnEventTag(tagIndent);
+  const nextIndex = getNextIndex(tagIndent);
 
   const dataObject = jsonObject(data);
   // 截取最新的值
@@ -134,9 +144,13 @@ function mergeStoreValue(preValue: string, data: any, pre: object, tagIndent: nu
   const value = JSON.parse(lastTag.split(event)[0]);
 
   for (const key in dataObject) {
-    const cur = value[key] || '';
-    const tag = cur ? returnStatusTag(getNextIndex(tagIndent)) : '';
-    value[key] = cur + tag + dataObject[key];
+    const pre = value[key] || '';
+    const cur = dataObject[key];
+
+    const prefix = pre ? pre + returnStatusTag(nextIndex) : pre;
+    const isObject = isObjectOrArray(cur);
+
+    value[key] = isObject ? mergeStoreValue(pre, cur, nextIndex) : prefix + cur;
   }
   return returnRecordTag(preValue, JSON.stringify(value), STORE_CHANGE_TAG.UPDATE, tagIndent);
 }
