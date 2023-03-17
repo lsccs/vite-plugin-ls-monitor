@@ -4,14 +4,9 @@
 import { LOCAL, SESSION, STORE_CHANGE_IDENT, STORE_EVENT_IDENT } from '../setting';
 import { DB, getDB } from './database';
 import { STORE_CHANGE_TAG } from '../types';
-import {
-  isEquals,
-  copy,
-  isObjectOrArray,
-  isArray,
-  getObjectType,
-  jsonObject,
-} from '../utils';
+import Task from '../core/task/Task';
+import { copy, getObjectType, isEquals, isObjectOrArray } from '../utils';
+import { scheduler } from './task/scheduler';
 
 // 缓存上一次的值
 const cache = {
@@ -23,9 +18,9 @@ const storage = {
   [SESSION]: sessionStorage,
   [LOCAL]: localStorage,
 };
+let currentStorageName: string;
 export const getNextIndex = (i = 0) => ++i;
-
-const channel = new MessageChannel();
+export const getPreNext = (i: number) => --i;
 
 listeningMemory();
 export function listeningMemory() {
@@ -50,134 +45,164 @@ export function listeningMemory() {
 function local(storageName: string) {
   const store = storage[storageName];
   return (key: string, value: string) => {
-    const cacheStore = cache[storageName];
+    currentStorageName = storageName;
+    const cacheStore = cache[currentStorageName];
     cacheStore[key] = JSON.parse(store.getItem(key));
     store.setItem(key, value);
-    channel.port1.onmessage = () => recordChangeLog(storageName, key, value);
-    channel.port2.postMessage('');
+    recordChangeLog(key, value);
   };
 }
 
 /**
  * 新建数据表，记录变更日志
  */
-async function recordChangeLog(storeName: string, key: string, value: string) {
-  const db = await getDB(storeName);
-  if (!db) {
-    console.error('indexedDB connect error');
-    return Promise.reject();
-  }
-  for (let i = 0; i < 90000000000000000000000; i++) {
-    console.log('okkkkk')
-  }
-  await diffChangeRecordLog(storeName, key, value, db);
-  return Promise.resolve();
+function recordChangeLog(key: string, value: string) {
+  getDB(currentStorageName).then((db) => {
+    if (!db) {
+      console.error('indexedDB connect error');
+      return Promise.reject();
+    }
+    diffChangeRecordLog(key, value, db);
+  });
 }
 
 /**
  * 对比两次修改结果，添加记录
  */
-async function diffChangeRecordLog(storeName: string, key: string, value: string, db: DB) {
+async function diffChangeRecordLog(key: string, value: string, db: DB) {
   const preValue = await db.getItem(key);
   const currenValue = JSON.parse(value);
   // 对比缓存和修改的值是否一致
-  const storeValue = cache[storeName][key];
+  const storeValue = cache[currentStorageName][key];
   if (!isEquals(storeValue, currenValue)) {
-    const value = diffChangeRecordLogHost(preValue, currenValue, getNextIndex(), storeValue);
-    db.put(value, key);
+    const task = new Task({
+      base: { value: preValue },
+      cacheValue: storeValue,
+      progressValue: currenValue,
+      nextTask: null,
+      action: diffChangeRecordLogHost,
+      field: key,
+      index: getNextIndex(),
+    });
+    task.setActioned(updateField);
+    scheduler(task);
   }
+}
+
+/**
+ * 更新目标字段
+ */
+function updateField(this: Task) {
+  getDB(currentStorageName).then((db) => {
+    db.put(this.update(), this.field);
+  });
 }
 
 /**
  * 记录每个属性的变化, 并打上 tag
- * 例: ||ls:add, 内层对象使用 @@
  */
-function diffChangeRecordLogHost(
-  preValue: string,
-  currenValue: any,
-  tagIndent: number,
-  cacheValue?: any,
-) {
-  // 当前值不是对象，或者 缓存的值为空，则无需对比
-  if (!isObjectOrArray(currenValue) || !cacheValue) {
-    const tag = cacheValue ? STORE_CHANGE_TAG.UPDATE : STORE_CHANGE_TAG.ADD;
-    return returnRecordTag(preValue, currenValue, tag, tagIndent);
-  }
+function diffChangeRecordLogHost(this: Task) {
+  const { cacheValue, progressValue } = this;
 
-  if (getObjectType(currenValue) !== getObjectType(cacheValue)) {
-    return returnRecordTag(preValue, currenValue, STORE_CHANGE_TAG.UPDATE, tagIndent);
+  if (
+    isObjectOrArray(progressValue) &&
+    isObjectOrArray(cacheValue) &&
+    getObjectType(progressValue) === getObjectType(cacheValue)
+  ) {
+    return serialChildTask(this);
   }
+  this.dispatch();
+}
 
+// 循环调度子任务
+function serialChildTask(parentTask: Task) {
+  const { index, progressValue, cacheValue, base, cacheJsonValue } = parentTask;
   // 初始化
-  const nextTagIndent = getNextIndex(tagIndent);
-  const deleteKeys = { ...cacheValue };
-
-  for (const key in currenValue) {
-    const cur = currenValue[key];
+  const nextTagIndent = getNextIndex(index);
+  const preValue = splitMemoryData(index, (cacheJsonValue || base.value) as string);
+  const eachKeys = new Set([...Object.keys(cacheValue), ...Object.keys(progressValue)]);
+  // 调度子任务
+  [...eachKeys].forEach((key, index) => {
+    const cur = progressValue[key];
     const pre = cacheValue[key];
-
-    currenValue[key] = diffChangeRecordLogHost('', cur, nextTagIndent, pre);
-    Reflect.deleteProperty(deleteKeys, key);
-  }
-  // 查看剩余未匹配的 preKeys，标记删除
-  Object.keys(deleteKeys).forEach((k) => {
-    currenValue[k] = returnRecordTag(currenValue[k], '', STORE_CHANGE_TAG.DELETE, nextTagIndent);
+    const childTask: Task = new Task({
+      ...parentTask,
+      progressValue: cur,
+      cacheValue: pre,
+      index: nextTagIndent,
+      field: key,
+      action: diffChangeRecordLogHost,
+      cacheJsonValue: preValue,
+      nextTask: null,
+    });
+    // 如果当前值获取不到，代表该字段需要删除
+    if (!cur) {
+      childTask.setEffect(STORE_CHANGE_TAG.DELETE);
+    }
+    // 缺少插队机制
+    // 缺少触发更新的时机
+    // 增加任务队列应该可以解决以上问题
+    scheduler(childTask);
   });
-  // 合并
-  return mergeStoreValue(preValue, currenValue, tagIndent);
+}
+
+// 通过标识分割解析数据
+function splitMemoryData(index: number, data: string) {
+  if (!data) return null;
+  const eventData = data.split(returnStatusTag(index));
+  const [jsonData] = eventData[eventData.length - 1]?.split(returnEventTag(index));
+  return JSON.parse(jsonData);
 }
 
 // 截取最新得值，覆盖修改
-function mergeStoreValue(preValue: string, data: any, tagIndent: number) {
-  // 当 preValue 为空时，不需要合并
-  if (!preValue) {
-    return data;
-  }
-  const tagStr = returnStatusTag(tagIndent);
-  const event = returnEventTag(tagIndent);
-  const nextIndex = getNextIndex(tagIndent);
-
-  const dataObject = jsonObject(data);
-  // 截取最新的值
-  const tagValue = preValue.split(tagStr);
-  const lastTag = tagValue[tagValue.length - 1];
-  const value = JSON.parse(lastTag.split(event)[0]);
-
-  for (const key in dataObject) {
-    const pre = value[key] || '';
-    const cur = dataObject[key];
-
-    const prefix = pre ? pre + returnStatusTag(nextIndex) : pre;
-    const isObject = isObjectOrArray(cur);
-
-    value[key] = isObject ? mergeStoreValue(pre, cur, nextIndex) : prefix + cur;
-  }
-  return returnRecordTag(preValue, JSON.stringify(value), STORE_CHANGE_TAG.UPDATE, tagIndent);
-}
+// function mergeStoreValue(preValue: string, data: any, tagIndent: number) {
+//   // 当 preValue 为空时，不需要合并
+//   if (!preValue) {
+//     return data;
+//   }
+//   const tagStr = returnStatusTag(tagIndent);
+//   const event = returnEventTag(tagIndent);
+//   const nextIndex = getNextIndex(tagIndent);
+//
+//   const dataObject = jsonObject(data);
+//   // 截取最新的值
+//   const tagValue = preValue.split(tagStr);
+//   const lastTag = tagValue[tagValue.length - 1];
+//   const value = JSON.parse(lastTag.split(event)[0]);
+//
+//   for (const key in dataObject) {
+//     const pre = value[key] || '';
+//     const cur = dataObject[key];
+//
+//     const prefix = pre ? pre + returnStatusTag(nextIndex) : pre;
+//     const isObject = isObjectOrArray(cur);
+//
+//     value[key] = isObject ? mergeStoreValue(pre, cur, nextIndex) : prefix + cur;
+//   }
+//   return returnRecordTag(preValue, JSON.stringify(value), STORE_CHANGE_TAG.UPDATE, tagIndent);
+// }
 
 /**
  * 添加 tag
  */
-function returnRecordTag(
-  preValue: any,
+export function returnRecordTag(
   value: Recordable | string,
   eventTag: STORE_CHANGE_TAG,
   ident: number,
 ) {
-  const tag = returnStatusTag(ident);
   const event = returnEventTag(ident);
   if (isObjectOrArray(value)) {
     addRecordEventTag(value as Recordable, getNextIndex(ident), eventTag);
     value = JSON.stringify(value);
   }
-  return `${preValue ? preValue + tag : ''}${value}${event}${eventTag}`;
+  return `${value}${event}${eventTag}`;
 }
 
 /**
  * 递归添加对象标签
  * @param value
  */
-function addRecordEventTag(value: Recordable, ident: number, eventTag: STORE_CHANGE_TAG) {
+export function addRecordEventTag(value: Recordable, ident: number, eventTag: STORE_CHANGE_TAG) {
   const event = returnEventTag(ident);
   for (const key in value) {
     if (isObjectOrArray(value[key])) {
@@ -200,12 +225,4 @@ export function returnEventTag(ident: number) {
  */
 export function returnStatusTag(index: number) {
   return `${STORE_CHANGE_IDENT}${index}${STORE_CHANGE_IDENT}`;
-}
-
-/**
- * 浅拷贝对象
- */
-export function lightCopy(obj: any, isShouldArray: boolean) {
-  const isArr = isArray(obj);
-  return isShouldArray ? [...(isArr ? obj : [])] : { ...obj };
 }
