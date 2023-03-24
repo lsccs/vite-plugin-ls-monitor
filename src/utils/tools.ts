@@ -64,5 +64,9 @@ export function copy(obj: object, exclude: string[]) {
 
 // json 转对象
 export function jsonObject(data: any) {
-  return isObjectType(data) ? data : JSON.parse(data);
+  try {
+    return isObjectType(data) ? data : JSON.parse(data);
+  } catch (_) {
+    return data;
+  }
 }

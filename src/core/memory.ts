@@ -5,7 +5,7 @@ import { LOCAL, SESSION, STORE_CHANGE_IDENT, STORE_EVENT_IDENT } from '../settin
 import { DB, getDB } from './database';
 import { STORE_CHANGE_TAG } from '../types';
 import Task from '../core/task/Task';
-import { copy, getObjectType, isEquals, isObjectOrArray } from '../utils';
+import {copy, getObjectType, isEquals, isObjectOrArray, jsonObject} from '../utils';
 import { scheduler } from './task/scheduler';
 
 // 缓存上一次的值
@@ -20,7 +20,7 @@ const storage = {
 };
 let currentStorageName: string;
 export const getNextIndex = (i = 0) => ++i;
-export const getPreNext = (i: number) => --i;
+export const getPreNext = (i: number) => (i > 1 ? --i : i);
 
 listeningMemory();
 export function listeningMemory() {
@@ -81,6 +81,7 @@ async function diffChangeRecordLog(key: string, value: string, db: DB) {
       progressValue: currenValue,
       nextTask: null,
       action: diffChangeRecordLogHost,
+      cacheJsonValue: splitMemoryData(getNextIndex(), preValue),
       field: key,
       index: getNextIndex(),
     });
@@ -116,15 +117,19 @@ function diffChangeRecordLogHost(this: Task) {
 
 // 循环调度子任务
 function serialChildTask(parentTask: Task) {
-  const { index, progressValue, cacheValue, base, cacheJsonValue } = parentTask;
+  const { index, progressValue, cacheValue, cacheJsonValue } = parentTask;
   // 初始化
   const nextTagIndent = getNextIndex(index);
-  const preValue = splitMemoryData(index, (cacheJsonValue || base.value) as string);
+  debugger;
   const eachKeys = new Set([...Object.keys(cacheValue), ...Object.keys(progressValue)]);
   // 调度子任务
-  [...eachKeys].forEach((key, index) => {
+  [...eachKeys].forEach((key) => {
     const cur = progressValue[key];
     const pre = cacheValue[key];
+
+    const memoryData = cacheJsonValue![key] || null;
+
+    const preValue = splitMemoryData(index, memoryData);
     const childTask: Task = new Task({
       ...parentTask,
       progressValue: cur,
@@ -139,48 +144,27 @@ function serialChildTask(parentTask: Task) {
     if (!cur) {
       childTask.setEffect(STORE_CHANGE_TAG.DELETE);
     }
-    // 缺少插队机制
-    // 缺少触发更新的时机
-    // 增加任务队列应该可以解决以上问题
-    scheduler(childTask);
+    // 使用子任务的方式解决 [触发更新的时机, 插队机制]
+    // scheduler(childTask);
+    parentTask.addChildTask(childTask);
   });
 }
 
 // 通过标识分割解析数据
-function splitMemoryData(index: number, data: string) {
+function splitMemoryData(index: number, data: string | Recordable | undefined) {
   if (!data) return null;
+  if (typeof data !== 'string') return data;
+
   const eventData = data.split(returnStatusTag(index));
   const [jsonData] = eventData[eventData.length - 1]?.split(returnEventTag(index));
-  return JSON.parse(jsonData);
-}
 
-// 截取最新得值，覆盖修改
-// function mergeStoreValue(preValue: string, data: any, tagIndent: number) {
-//   // 当 preValue 为空时，不需要合并
-//   if (!preValue) {
-//     return data;
-//   }
-//   const tagStr = returnStatusTag(tagIndent);
-//   const event = returnEventTag(tagIndent);
-//   const nextIndex = getNextIndex(tagIndent);
-//
-//   const dataObject = jsonObject(data);
-//   // 截取最新的值
-//   const tagValue = preValue.split(tagStr);
-//   const lastTag = tagValue[tagValue.length - 1];
-//   const value = JSON.parse(lastTag.split(event)[0]);
-//
-//   for (const key in dataObject) {
-//     const pre = value[key] || '';
-//     const cur = dataObject[key];
-//
-//     const prefix = pre ? pre + returnStatusTag(nextIndex) : pre;
-//     const isObject = isObjectOrArray(cur);
-//
-//     value[key] = isObject ? mergeStoreValue(pre, cur, nextIndex) : prefix + cur;
-//   }
-//   return returnRecordTag(preValue, JSON.stringify(value), STORE_CHANGE_TAG.UPDATE, tagIndent);
-// }
+  // 如果不是对象，就直接返回 data，防止丢失事件标识
+  const result = jsonObject(jsonData);
+  if (!isObjectOrArray(result)) {
+    return data;
+  }
+  return result;
+}
 
 /**
  * 添加 tag

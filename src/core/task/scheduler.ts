@@ -32,13 +32,29 @@ function startScheduler() {
 
 /**
  * 开始执行，并返回下一个任务
+ * 首先执行当前任务，然后获取第一个子任务
+ *   - 如果子任务存在
+ *      - 开始执行子任务
+ *   - 如果子任务不存在 (此时执行成功回调)
+ *      - 父任务不存在，代表可以直接开始执行下一个任务
+ *      - 父任务存在，代表需要执行 子任务的 父级的 下一个任务
+ *
+ * 目的：将任务分为两个维度, 可以实现分批执行成功回调
  * @param task
  */
 function progressNextTask(task: Task): Task | null {
+  debugger;
   task.action && task.action();
-  task.actioned && task.actioned();
-  console.log(task.getNextTask(), '准备执行下一个任务');
-  return task.getNextTask();
+  const nextChildTask = task.getNextChildTask();
+
+  const parentTask = task.getParentTask();
+  if (!nextChildTask) {
+    const willActionTask = task.getNextTask() || !parentTask ? task : parentTask;
+    task.syncCacheJsonValue();
+    willActionTask.actioned && willActionTask.actioned();
+    return willActionTask.getNextTask();
+  }
+  return nextChildTask;
 }
 
 /**

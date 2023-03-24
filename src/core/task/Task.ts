@@ -18,7 +18,12 @@ export default class Task {
   // 当前层级
   readonly index: number;
   // 下一个任务
-  private nextTask: Task | null;
+  private nextTask: Task | null = null;
+  // 父任务
+  private parentTask: Task | null = null;
+
+  private childTask: Task | null = null;
+  private lastChildTask: Task | null = null;
 
   // 执行的具体任务方法
   action: TaskWork | null = null;
@@ -45,16 +50,13 @@ export default class Task {
     this.updateEffect();
     // 修改 cacheJsonValue
     Helper[this.effect!](this);
-    console.log(this, 'this');
   }
 
   // 更新
   update() {
     // 生成待添加的 value
     const result: string = Helper.transferCacheJsonValue(this);
-    console.log(result, 'result');
     if (result) {
-      // 赋值 base value
       this.base.value = (this.base.value || '') + result;
     }
     return this.base.value;
@@ -72,8 +74,50 @@ export default class Task {
     }
   }
 
+  // 更新父级任务的 cacheJsonValue, 子任务执行完毕之后需要同步给父任务
+  syncCacheJsonValue() {
+    const parentTask = this.parentTask;
+    if (!this.cacheJsonValue) return;
+    if (parentTask) {
+      // 如果父任务没缓存的值，代表可以转 json 直接添加
+      if (!parentTask.cacheJsonValue) {
+        parentTask.cacheJsonValue = this.cacheJsonValue;
+        return;
+      }
+      parentTask.cacheJsonValue[this.field] = this.cacheJsonValue;
+    }
+  }
+
   setEffect(effect: STORE_CHANGE_TAG) {
     this.effect = effect;
+  }
+
+  addChildTask(task: Task) {
+    // 串行子任务
+    if (this.lastChildTask) {
+      this.lastChildTask.nextTask = task;
+    }
+    // 赋值第一个子任务
+    if (!this.childTask) {
+      this.childTask = task;
+    }
+    // 更新最后一个子任务
+    this.lastChildTask = task;
+    // 添加父任务
+    task.parentTask = this;
+  }
+
+  // 返回下一个子任务, 并更新
+  getNextChildTask() {
+    if (!this.childTask) {
+      this.lastChildTask = null;
+    }
+    return this.childTask;
+  }
+
+  // 获取父任务
+  getParentTask() {
+    return this.parentTask;
   }
 
   setAction(action: TaskWork) {
@@ -90,5 +134,9 @@ export default class Task {
 
   getNextTask() {
     return this.nextTask;
+  }
+
+  setCacheJsonValue(value: string | Recordable) {
+    this.cacheJsonValue = value;
   }
 }

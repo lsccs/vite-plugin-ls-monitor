@@ -9,36 +9,29 @@ export default class Helper {
    * 添加
    */
   static [STORE_CHANGE_TAG.ADD](task: Task) {
-    const { cacheJsonValue, field } = task;
+    const { cacheJsonValue } = task;
 
     const value = returnRecordTag(task.progressValue, STORE_CHANGE_TAG.ADD, task.index);
-    console.log(value, 'value');
-    if (!cacheJsonValue) {
-      task.cacheJsonValue = value;
-    } else {
-      cacheJsonValue[field] = value;
-    }
+    task.cacheJsonValue = (cacheJsonValue || '') + value;
   }
   /**
    * 修改
    */
   static [STORE_CHANGE_TAG.UPDATE](task: Task) {
-    const { progressValue, index, field, cacheJsonValue } = task;
+    const { progressValue, index, cacheJsonValue } = task;
     const { UPDATE } = STORE_CHANGE_TAG;
 
     if (cacheJsonValue) {
-      cacheJsonValue[field] +=
-        returnStatusTag(index) + returnRecordTag(progressValue, UPDATE, index);
+      task.cacheJsonValue += returnStatusTag(index) + returnRecordTag(progressValue, UPDATE, index);
     }
   }
   /**
    * 删除
    */
   static [STORE_CHANGE_TAG.DELETE](task: Task) {
-    const { cacheJsonValue, field, index } = task;
-    if (cacheJsonValue) {
-      cacheJsonValue[field] += returnRecordTag('', STORE_CHANGE_TAG.DELETE, index);
-    }
+    const { cacheJsonValue, index } = task;
+    task.cacheJsonValue =
+      (cacheJsonValue || '') + returnRecordTag('', STORE_CHANGE_TAG.DELETE, index);
   }
 
   // 转换 cacheJsonValue
@@ -52,6 +45,7 @@ export default class Helper {
 
     const result = JSON.stringify(cacheJsonValue);
     const preIndex = getPreNext(index);
+
     return returnStatusTag(preIndex) + returnRecordTag(result, tag, preIndex);
   }
 }
