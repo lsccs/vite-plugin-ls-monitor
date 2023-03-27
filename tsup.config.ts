@@ -9,7 +9,7 @@ export default defineConfig({
   ],
   format: ['esm'],
   dts: {
-    entry: './types.ts',
+    entry: './types/index.ts',
   },
   splitting: false,
   clean: true,

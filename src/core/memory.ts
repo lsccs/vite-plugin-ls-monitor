@@ -5,7 +5,7 @@ import { LOCAL, SESSION, STORE_CHANGE_IDENT, STORE_EVENT_IDENT } from '../settin
 import { DB, getDB } from './database';
 import { STORE_CHANGE_TAG } from '../types';
 import Task from '../core/task/Task';
-import {copy, getObjectType, isEquals, isObjectOrArray, jsonObject} from '../utils';
+import { copy, getObjectType, isEquals, isObjectOrArray, jsonObject } from '../utils';
 import { scheduler } from './task/scheduler';
 
 // 缓存上一次的值

@@ -15,12 +15,16 @@
     "noEmit": true,
     "suppressImplicitAnyIndexErrors": true,
     "baseUrl": "src",
+    "lib": [
+      "dom",
+      "esnext",
+    ],
   },
   "include": [
     "src/**/*.ts",
     "src/**/*.d.ts",
     "src/**/*.tsx",
     "src/**/*.vue",
-    "../types/global.d.ts"
+    "./types/*.ts",
   ]
 }

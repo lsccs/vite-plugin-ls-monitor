@@ -1,3 +1,3 @@
 export { createLsMonitorPlugin } from './src/index';
 
-export * from './types';
+export * from './src/types';
